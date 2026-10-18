@@ -1,0 +1,9 @@
+Django>=5.2,<5.3
+djangorestframework>=3.16,<4
+certifi>=2025.1.31
+cryptography>=44,<47
+python-dotenv>=1.1,<2
+dj-database-url>=2.3,<4
+gunicorn>=23,<24
+psycopg[binary]>=3.2,<4
+whitenoise>=6.9,<7

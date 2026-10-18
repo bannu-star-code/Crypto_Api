@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Delta Exchange portfolio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1020;
+      color: #e8ecf5;
+    }
+    body { margin: 0; min-height: 100vh; }
+    main { width: min(1000px, calc(100% - 40px)); margin: 56px auto; }
+    nav { display: flex; gap: 18px; margin: 0 0 32px; }
+    nav a { color: #7dd3fc; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    nav form { display: inline; margin: 0 0 0 auto; }
+    nav button { padding: 6px 10px; }
+    .eyebrow { color: #7dd3fc; font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(2rem, 5vw, 3.25rem); }
+    .subtitle, .hint { color: #aab4ca; }
+    .subtitle { margin: 0 0 32px; }
+    section { padding: 24px; border: 1px solid #27324a; border-radius: 16px; background: #121a2b; margin-bottom: 20px; }
+    h2 { margin: 0 0 18px; font-size: 1.15rem; }
+    .notice { border-color: #725b2b; background: #211d13; color: #f6d98c; }
+    .trade-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+    .trade-form label { display: grid; gap: 8px; color: #aab4ca; }
+    .trade-form input, .trade-form select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #35425e; border-radius: 8px; background: #0b1020; color: #e8ecf5; font: inherit; }
+    button { padding: 14px 20px; border: 0; border-radius: 10px; background: #7dd3fc; color: #07111e; font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: #a5e3ff; }
+    .trade-form .submit-row { grid-column: 1 / -1; }
+    .trade-form .submit-row button { width: 100%; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { padding: 13px 12px; border-bottom: 1px solid #27324a; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: #aab4ca; font-size: .8rem; }
+    .hint { margin-top: 22px; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Main navigation">
+      <a href="/">Coin search</a>
+      <a href="/portfolio/" aria-current="page">My portfolio</a>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+      </form>
+    </nav>
+    <div class="eyebrow">Delta Exchange India account</div>
+    <h1>My portfolio</h1>
+    <p class="subtitle">Spot holdings, wallet balances, and open positions are fetched from Delta Exchange.</p>
+
+    <section>
+      <h2>Buy or sell spot crypto</h2>
+      <p class="hint">Only live Delta spot markets are available here. Review the order details before confirming; confirmed orders are real trades. INR sizing is an estimate for market orders, and execution price can differ.</p>
+      {% if spot_products_error %}
+        <div class="notice" role="alert">
+          <p>{{ spot_products_error }}</p>
+        </div>
+      {% elif spot_products %}
+        <form class="trade-form" method="post" action="{% url 'spot_trade_preview' %}">
+          {% csrf_token %}
+          <label>
+            Side
+            <select name="side" required>
+              <option value="buy">Buy</option>
+              <option value="sell">Sell</option>
+            </select>
+          </label>
+          <label>
+            Spot market
+            <select name="product_id" required>
+              {% for product in spot_products %}
+                <option value="{{ product.id }}">{{ product.symbol }} (min {{ product.product_specs.min_order_size }} {{ product.contract_unit_currency }})</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Amount type
+            <select name="amount_mode" id="amount-mode" required>
+              <option value="coin">Coin quantity</option>
+              <option value="inr">INR value</option>
+            </select>
+          </label>
+          <label>
+            <span id="amount-label">Amount (coin quantity)</span>
+            <input name="amount" type="number" min="0" step="any" required>
+          </label>
+          <label>
+            Order type
+            <select name="order_type" id="order-type" required>
+              <option value="market_order">Market</option>
+              <option value="limit_order">Limit</option>
+            </select>
+          </label>
+          <label id="limit-price-field" hidden>
+            Limit price (INR)
+            <input name="limit_price" type="number" min="0" step="any">
+          </label>
+          <div class="submit-row">
+            <button type="submit">Review order</button>
+          </div>
+        </form>
+        <script>
+          const amountMode = document.getElementById("amount-mode");
+          const amountLabel = document.getElementById("amount-label");
+          const orderType = document.getElementById("order-type");
+          const limitPriceField = document.getElementById("limit-price-field");
+          const limitPriceInput = limitPriceField.querySelector("input");
+          function updateTradeFields() {
+            amountLabel.textContent = amountMode.value === "inr"
+              ? "Amount (INR)"
+              : "Amount (coin quantity)";
+            limitPriceField.hidden = orderType.value !== "limit_order";
+            limitPriceInput.required = orderType.value === "limit_order";
+          }
+          amountMode.addEventListener("change", updateTradeFields);
+          orderType.addEventListener("change", updateTradeFields);
+          updateTradeFields();
+        </script>
+      {% else %}
+        <p>No live Delta spot markets are currently available.</p>
+      {% endif %}
+    </section>
+    <section>
+      <h2>Wallet balances</h2>
+      {% if balances_error %}
+        <div class="notice" role="alert">
+          <p>{{ balances_error }}</p>
+        </div>
+      {% else %}
+        {% if balances %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Available</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for balance in balances %}
+                <tr>
+                  <td>{{ balance.asset }}</td>
+                  <td>{{ balance.available }}</td>
+                  <td>{{ balance.total }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p>No wallet balances were returned.</p>
+        {% endif %}
+      {% endif %}
+    </section>
+    <section>
+      <h2>Open positions</h2>
+      {% if positions_error %}
+        <div class="notice" role="alert">
+          <p>{{ positions_error }}</p>
+        </div>
+      {% else %}
+        {% if positions %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Size</th>
+                  <th>Entry price</th>
+                  <th>Mark price</th>
+                  <th>Unrealized P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for position in positions %}
+                  <tr>
+                    <td>{{ position.product }}</td>
+                    <td>{{ position.size }}</td>
+                    <td>{{ position.entry_price }}</td>
+                    <td>{{ position.mark_price }}</td>
+                    <td>{{ position.unrealized_pnl }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p>No open positions were returned.</p>
+        {% endif %}
+      {% endif %}
+    </section>
+    <p class="hint">Viewing balances is read-only. Confirmed spot orders send a trade request to Delta and can use real funds. Delta's Trading API permission may also allow other trading actions, so keep the key private and IP-restricted. Trading is available only from this computer.</p>
+  </main>
+</body>
+</html>

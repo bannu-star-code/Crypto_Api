@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order submitted</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0b1020; color: #e8ecf5; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+    main { width: min(560px, calc(100% - 40px)); padding: 32px; border: 1px solid #27324a; border-radius: 16px; background: #121a2b; }
+    p { color: #aab4ca; line-height: 1.5; }
+    a { display: inline-block; margin: 12px 12px 0 0; color: #7dd3fc; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Order submitted to Delta</h1>
+    <p>{{ side|title }} {{ size }} {{ coin }} on {{ symbol }}.</p>
+    {% if order_id %}<p>Delta order ID: {{ order_id }}</p>{% endif %}
+    {% if order_status %}<p>Reported order status: {{ order_status }}</p>{% endif %}
+    <p>Submission does not guarantee a fill. Check the order status in Delta; a limit order may remain open. Refresh your portfolio after the order fills to see updated wallet holdings.</p>
+    <a href="/portfolio/">Return to portfolio</a>
+    <a href="/">Coin search</a>
+  </main>
+</body>
+</html>
